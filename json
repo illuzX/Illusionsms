@@ -1,0 +1,15 @@
+[
+    {
+        "name": "free_sms_gateway",
+        "enabled": true,
+        "weight": 1,
+        "method": "POST",
+        "url": "https://some-real-sms-api.com/endpoint",
+        "headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer your_token_here"
+        },
+        "data_template": "{\"to\": \"{target}\", \"text\": \"Your OTP is {otp}\"}",
+        "success_keywords": ["success", "sent"]
+    }
+]
