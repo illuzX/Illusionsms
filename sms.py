@@ -369,13 +369,13 @@ except FileNotFoundError:
 
 
 __VERSION__ = get_version()
-__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H', 'Robert', 'Rosh']
+__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H']
 
 ALL_COLORS = [Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.BLUE,
               Fore.MAGENTA, Fore.CYAN, Fore.WHITE]
 RESET_ALL = Style.RESET_ALL
 
-ASCII_MODE = True
+ASCII_MODE = False
 DEBUG_MODE = False
 
 description = """Illusionsms - Your Friendly Spammer Application
