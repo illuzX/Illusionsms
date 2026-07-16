@@ -55,7 +55,15 @@ def bann_text():
 (  V  ) Illusionsms (  V  )
 --m-m-----------------m-m--                      """
     if ASCII_MODE:
-        logo = ""
+        logo = """╔═╗╔═╗╔═══╗╔╗  ╔╗
+╚╗╚╝╔╝║╔═╗║║╚╗╔╝║
+ ╚╗╔╝ ╚╝╔╝║╚╗║║╔╝
+ ╔╝╚╗ ╔═╝╔╝ ║╚╝║ 
+╔╝╔╗╚╗║║╚═╗ ╚╗╔╝ 
+╚═╝╚═╝╚═══╝  ╚╝  
+                 
+                 
+"""
     version = "Version: "+__VERSION__
     contributors = "Contributors: "+" ".join(__CONTRIBUTORS__)
     print(random.choice(ALL_COLORS) + logo + RESET_ALL)
@@ -243,7 +251,7 @@ def pretty_print(cc, target, success, failed):
 
 def workernode(mode, cc, target, count, delay, max_threads):
 
-    api = APIProvider(cc, target, mode, delay=delay)
+    api = APIPov(cc, target, mode, delay=delay)
     clr()
     mesgdcrt.SectionMessage("Gearing up the Spammer - Please be patient")
     mesgdcrt.GeneralMessage(
@@ -260,7 +268,7 @@ def workernode(mode, cc, target, count, delay, max_threads):
     input(mesgdcrt.CommandMessage(
         "Press [CTRL+Z] to suspend the Spammer or [ENTER] to resume it"))
 
-    if len(APIProvider.api_providers) == 0:
+    if len(APIPov.api_providers) == 0:
         mesgdcrt.FailureMessage("Your country/target is not supported yet")
         mesgdcrt.GeneralMessage("Feel free to reach out to us")
         input(mesgdcrt.CommandMessage("Press [ENTER] to exit"))
@@ -369,13 +377,13 @@ except FileNotFoundError:
 
 
 __VERSION__ = get_version()
-__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H']
+__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H', 'Robert', 'Rosh']
 
 ALL_COLORS = [Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.BLUE,
               Fore.MAGENTA, Fore.CYAN, Fore.WHITE]
 RESET_ALL = Style.RESET_ALL
 
-ASCII_MODE = False
+ASCII_MODE = True
 DEBUG_MODE = False
 
 description = """Illusionsms - Your Friendly Spammer Application
@@ -409,7 +417,7 @@ parser.add_argument("-v", "--version", action="store_true",
 if __name__ == "__main__":
     args = parser.parse_args()
     if args.ascii:
-        ASCII_MODE = True
+        ASCII_MODE = False
         mesgdcrt = MessageDecorator("stat")
     if args.version:
         print("Version: ", __VERSION__)
