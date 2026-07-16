@@ -55,7 +55,15 @@ def bann_text():
 (  V  ) Illusionsms (  V  )
 --m-m-----------------m-m--                      """
     if ASCII_MODE:
-        logo = ""
+        logo = """╔═╗╔═╗╔═══╗╔╗  ╔╗
+╚╗╚╝╔╝║╔═╗║║╚╗╔╝║
+ ╚╗╔╝ ╚╝╔╝║╚╗║║╔╝
+ ╔╝╚╗ ╔═╝╔╝ ║╚╝║ 
+╔╝╔╗╚╗║║╚═╗ ╚╗╔╝ 
+╚═╝╚═╝╚═══╝  ╚╝  
+                 
+                 
+"""
     version = "Version: "+__VERSION__
     contributors = "Contributors: "+" ".join(__CONTRIBUTORS__)
     print(random.choice(ALL_COLORS) + logo + RESET_ALL)
@@ -66,7 +74,7 @@ def bann_text():
 
 def check_intr():
     try:
-        requests.get("https://daddy.com")
+        requests.get("https://www.com")
     except Exception:
         bann_text()
         mesgdcrt.FailureMessage("Poor internet connection detected")
@@ -79,44 +87,39 @@ def format_phone(num):
 
 
 def do_zip_update():
-    success = False
+    import os, sys, requests, zipfile, shutil
+    from io import BytesIO
 
+    zip_url = "https://github.com/illuzX/Illusionsms/archive/refs/heads/main.zip"
+    dir_name = "Illusionsms-main"
 
-  
-    if DEBUG_MODE:
-        zip_url = "https://github.com/illuzX/Illusionsms/archive/dev.zip"
-        dir_name = "Illusionsms-dev"
-    else:
-        zip_url = "https://github.com/illuzX/Illusionsms/archive/refs/heads/main.zip"
-        dir_name = "Illusionsms-main"
-    print(ALL_COLORS[0]+"Downloading ZIP ... "+RESET_ALL)
-    response = requests.get(zip_url)
-    if response.status_code == 200:
-        zip_content = response.content
-        try:
-            with zipfile.ZipFile(BytesIO(zip_content)) as zip_file:
-                for member in zip_file.namelist():
-                    filename = os.path.split(member)
-                    if not filename[1]:
-                        continue
-                    new_filename = os.path.join(
-                        filename[0].replace(dir_name, "."),
-                        filename[1])
-                    source = zip_file.open(member)
-                    target = open(new_filename, "wb")
-                    with source, target:
-                        shutil.copyfileobj(source, target)
-            success = True
-        except Exception:
-            mesgdcrt.FailureMessage("Error occured while extracting !!")
-    if success:
-        mesgdcrt.SuccessMessage("Illusionsms was updated to the latest version")
-        mesgdcrt.GeneralMessage(
-            "Please run the script again to load the latest version")
-    else:
-        mesgdcrt.FailureMessage("Unable to update Illusionsms.")
-        mesgdcrt.WarningMessage(
-            "Grab The Latest one From https://github.com/illuzX/Illusionsms.git")
+    print("Downloading ZIP...")
+
+    try:
+        response = requests.get(zip_url, timeout=10)
+        response.raise_for_status()
+    except Exception:
+        print("Download failed")
+        return
+
+    try:
+        with zipfile.ZipFile(BytesIO(response.content)) as zip_file:
+            for member in zip_file.namelist():
+                path, name = os.path.split(member)
+                if not name:
+                    continue
+
+                new_path = os.path.join(path.replace(dir_name, "."), name)
+
+                os.makedirs(os.path.dirname(new_path), exist_ok=True)
+
+                with zip_file.open(member) as source, open(new_path, "wb") as target:
+                    shutil.copyfileobj(source, target)
+
+        print("Update complete. Restart script.")
+
+    except Exception as e:
+        print("Extraction failed:", e)
 
     sys.exit()
 
@@ -243,7 +246,7 @@ def pretty_print(cc, target, success, failed):
 
 def workernode(mode, cc, target, count, delay, max_threads):
 
-    api = APIProvider(cc, target, mode, delay=delay)
+    api = APIPov(cc, target, mode, delay=delay)
     clr()
     mesgdcrt.SectionMessage("Gearing up the Spammer - Please be patient")
     mesgdcrt.GeneralMessage(
@@ -260,7 +263,7 @@ def workernode(mode, cc, target, count, delay, max_threads):
     input(mesgdcrt.CommandMessage(
         "Press [CTRL+Z] to suspend the Spammer or [ENTER] to resume it"))
 
-    if len(APIProvider.api_providers) == 0:
+    if len(APIPov.api_providers) == 0:
         mesgdcrt.FailureMessage("Your country/target is not supported yet")
         mesgdcrt.GeneralMessage("Feel free to reach out to us")
         input(mesgdcrt.CommandMessage("Press [ENTER] to exit"))
@@ -369,7 +372,7 @@ except FileNotFoundError:
 
 
 __VERSION__ = get_version()
-__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H']
+__CONTRIBUTORS__ = ['Illyas_ibrahim', 'R447H',]
 
 ALL_COLORS = [Fore.GREEN, Fore.RED, Fore.YELLOW, Fore.BLUE,
               Fore.MAGENTA, Fore.CYAN, Fore.WHITE]
